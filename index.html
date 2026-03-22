@@ -62,6 +62,11 @@
         const supabaseUrl = 'https://jnydylymxpkrqllqcyse.supabase.co'; 
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpueWR5bHlteHBrcnFsbHFjeXNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwOTgxMTgsImV4cCI6MjA4ODY3NDExOH0.fxUbdm7oItzJdW8ycpuLJtznVjwTzmLOz8ialZ96Yt0';
         const clienteSupabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        // 2. TRADUTOR DE NOMES (Coloque os e-mails exatos que cadastrou no Supabase)
+        const nomesEquipe = {
+            "seuemail@exemplo.com": "Matheus",
+            "emaildoamigo1@exemplo.com": "João",
+            "emaildoamigo2@exemplo.com": "Pedro"
 
         let emailUsuarioLogado = "";
         let todosOsPedidos = [];
