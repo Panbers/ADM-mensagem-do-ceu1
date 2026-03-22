@@ -26,6 +26,10 @@
         .btn-orar:hover { background-color: #00695C; }
         .btn-ja-orou { background-color: #9E9E9E; width: 100%; cursor: not-allowed; }
         
+        /* Estilo para link discreto */
+        .link-esqueci { display: block; margin-top: 15px; color: #6b5b95; text-decoration: none; font-size: 0.9em; cursor: pointer; }
+        .link-esqueci:hover { text-decoration: underline; }
+        
         .cabecalho-painel { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
         .boas-vindas { color: #6b5b95; font-weight: bold; margin-top: 5px; display: block; }
     </style>
@@ -39,7 +43,18 @@
         <input type="email" id="emailInput" placeholder="Seu E-mail"><br>
         <input type="password" id="senhaInput" placeholder="Sua Senha"><br>
         <button class="btn-entrar" onclick="fazerLogin()">Entrar</button>
+        
         <p id="msg-erro" style="color: red; display: none;">Login ou senha incorretos.</p>
+        
+        <a class="link-esqueci" onclick="pedirRecuperacaoSenha()">Esqueci minha senha</a>
+        <p id="msg-recuperacao" style="color: green; display: none;">Link de recuperação enviado para o seu e-mail!</p>
+    </div>
+
+    <div id="tela-nova-senha" class="container login-box" style="display: none;">
+        <h1>🔑 Nova Senha</h1>
+        <p>Digite a sua nova senha abaixo:</p>
+        <input type="password" id="novaSenhaInput" placeholder="Nova senha segura"><br>
+        <button class="btn-entrar" onclick="salvarNovaSenha()">Salvar Nova Senha</button>
     </div>
 
     <div id="tela-painel" class="container" style="display: none;">
@@ -54,15 +69,86 @@
     </div>
 
     <script>
-        // 1. COLOQUE AS SUAS CHAVES AQUI
+        // COLOQUE AS SUAS CHAVES AQUI
         const supabaseUrl = 'https://jnydylymxpkrqllqcyse.supabase.co'; 
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpueWR5bHlteHBrcnFsbHFjeXNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwOTgxMTgsImV4cCI6MjA4ODY3NDExOH0.fxUbdm7oItzJdW8ycpuLJtznVjwTzmLOz8ialZ96Yt0';
         const clienteSupabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        let nomeUsuarioLogado = ""; // Agora vamos guardar o NOME e não o e-mail!
+        let nomeUsuarioLogado = ""; 
         let todosOsPedidos = [];
 
-        // FUNÇÃO DE LOGIN
+        // ==========================================
+        // VIGIAR EVENTOS DE AUTENTICAÇÃO (MÁGICA DO SUPABASE)
+        // ==========================================
+        clienteSupabase.auth.onAuthStateChange((event, session) => {
+            // Se o sistema perceber que a pessoa clicou no link de recuperar senha no e-mail:
+            if (event === 'PASSWORD_RECOVERY') {
+                document.getElementById('tela-login').style.display = 'none';
+                document.getElementById('tela-painel').style.display = 'none';
+                document.getElementById('tela-nova-senha').style.display = 'block'; // Mostra a tela de trocar a senha
+            }
+        });
+
+        // ==========================================
+        // FUNÇÕES DE RECUPERAÇÃO DE SENHA
+        // ==========================================
+        
+        // 1. Enviar o e-mail
+        async function pedirRecuperacaoSenha() {
+            const emailDigitado = document.getElementById('emailInput').value;
+            
+            if (!emailDigitado) {
+                alert("Por favor, digite o seu e-mail no campo acima antes de clicar em Esqueci a senha.");
+                return;
+            }
+
+            // Pede ao Supabase para enviar o e-mail
+            const { data, error } = await clienteSupabase.auth.resetPasswordForEmail(emailDigitado, {
+                redirectTo: window.location.origin // Diz pro e-mail voltar para a página que estamos agora
+            });
+
+            if (error) {
+                alert("Erro ao enviar e-mail: " + error.message);
+            } else {
+                document.getElementById('msg-recuperacao').style.display = 'block';
+            }
+        }
+
+        // 2. Salvar a senha nova no banco
+        async function salvarNovaSenha() {
+            const senhaNova = document.getElementById('novaSenhaInput').value;
+            
+            if (senhaNova.length < 6) {
+                alert("A senha deve ter pelo menos 6 caracteres.");
+                return;
+            }
+
+            const { data, error } = await clienteSupabase.auth.updateUser({ password: senhaNova });
+
+            if (error) {
+                alert("Erro ao atualizar senha: " + error.message);
+            } else {
+                alert("Senha atualizada com sucesso! Você já pode usar o painel.");
+                // Limpa a tela e volta pro painel
+                document.getElementById('tela-nova-senha').style.display = 'none';
+                
+                // Puxa o nome e carrega o painel, pois a essa altura o Supabase já fez login automático
+                fazerLoginAposRecuperacao(data.user);
+            }
+        }
+
+        function fazerLoginAposRecuperacao(user) {
+            const metadata = user.user_metadata;
+            nomeUsuarioLogado = metadata.nome || user.email.split('@')[0];
+            document.getElementById('texto-boas-vindas').innerText = "Olá, " + nomeUsuarioLogado + "!";
+            document.getElementById('tela-painel').style.display = 'block';
+            carregarPedidos();
+        }
+
+        // ==========================================
+        // FUNÇÕES DO PAINEL (As mesmas que já estavam prontas)
+        // ==========================================
+
         async function fazerLogin() {
             const emailDigitado = document.getElementById('emailInput').value;
             const senhaDigitada = document.getElementById('senhaInput').value;
@@ -75,14 +161,11 @@
 
             if (error) {
                 msgErro.style.display = 'block';
-                console.error(error);
             } else {
                 msgErro.style.display = 'none';
+                document.getElementById('msg-recuperacao').style.display = 'none';
                 
-                // Vai buscar o nome que nós salvamos no perfil usando o código SQL
                 const metadata = data.user.user_metadata;
-                
-                // Se por acaso esquecer de rodar o SQL, ele usa o começo do e-mail para não dar erro
                 nomeUsuarioLogado = metadata.nome || data.user.email.split('@')[0];
                 
                 document.getElementById('texto-boas-vindas').innerText = "Olá, " + nomeUsuarioLogado + "!";
@@ -93,7 +176,6 @@
             }
         }
 
-        // FUNÇÃO PARA CARREGAR OS PEDIDOS
         async function carregarPedidos() {
             const { data, error } = await clienteSupabase
                 .from('pedidos_oracao')
@@ -103,35 +185,20 @@
             const divLista = document.getElementById('lista-pedidos');
             divLista.innerHTML = ''; 
 
-            if (error) {
-                divLista.innerHTML = '<p>Erro ao carregar os pedidos.</p>';
-                return;
-            }
-
-            if (!data || data.length === 0) {
-                divLista.innerHTML = '<p>Nenhum pedido de oração no momento.</p>';
-                return;
-            }
+            if (error || !data) { divLista.innerHTML = '<p>Erro ao carregar ou sem pedidos.</p>'; return; }
 
             todosOsPedidos = data; 
 
             data.forEach(item => {
                 const dataFormatada = new Date(item.created_at).toLocaleDateString('pt-BR');
                 const nomeExibicao = item.nome ? item.nome : 'Anônimo';
-                
-                // Agora a lista já tem os Nomes salvos direto!
                 let listaQuemOrou = item.quem_orou || [];
                 let nomesQuemOrou = listaQuemOrou.length > 0 ? listaQuemOrou.join(", ") : "Ninguém ainda";
-                
-                // Verifica se o meu NOME está na lista
                 let euJaOrei = listaQuemOrou.includes(nomeUsuarioLogado);
                 
-                let botaoHTML = "";
-                if (euJaOrei) {
-                    botaoHTML = `<button class="btn-ja-orou" disabled>✅ Você já orou por este pedido</button>`;
-                } else {
-                    botaoHTML = `<button class="btn-orar" onclick="marcarComoOrou(${item.id})">🙏 Marcar que já orei</button>`;
-                }
+                let botaoHTML = euJaOrei 
+                    ? `<button class="btn-ja-orou" disabled>✅ Você já orou por este pedido</button>` 
+                    : `<button class="btn-orar" onclick="marcarComoOrou(${item.id})">🙏 Marcar que já orei</button>`;
 
                 divLista.innerHTML += `
                     <div class="pedido-card">
@@ -145,30 +212,17 @@
             });
         }
 
-        // FUNÇÃO DE REGISTRAR ORAÇÃO
         async function marcarComoOrou(idDoPedido) {
             const pedidoAtual = todosOsPedidos.find(p => p.id === idDoPedido);
             if (!pedidoAtual) return;
 
             let novaLista = pedidoAtual.quem_orou || [];
-            
-            // Adiciona o NOME do usuário logado na lista
             novaLista.push(nomeUsuarioLogado); 
 
-            const { error } = await clienteSupabase
-                .from('pedidos_oracao')
-                .update({ quem_orou: novaLista })
-                .eq('id', idDoPedido);
-
-            if (error) {
-                alert("Erro ao registrar oração.");
-                console.error(error);
-            } else {
-                carregarPedidos();
-            }
+            const { error } = await clienteSupabase.from('pedidos_oracao').update({ quem_orou: novaLista }).eq('id', idDoPedido);
+            if (!error) carregarPedidos();
         }
 
-        // FUNÇÃO DE SAIR
         async function fazerLogout() {
             await clienteSupabase.auth.signOut();
             document.getElementById('tela-painel').style.display = 'none';
