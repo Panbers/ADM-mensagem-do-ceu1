@@ -9,18 +9,15 @@
         .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         h1 { color: #333; text-align: center; }
         
-        /* Estilos do Painel */
         .pedido-card { border-left: 5px solid #6b5b95; background: #fafafa; padding: 15px; margin-bottom: 15px; border-radius: 4px; position: relative; }
         .nome { font-weight: bold; color: #6b5b95; font-size: 1.1em; margin-bottom: 5px; }
         .data { font-size: 0.8em; color: #888; position: absolute; top: 15px; right: 15px; }
         .texto-pedido { font-size: 1.1em; margin: 15px 0; }
         .quem-orou-texto { font-size: 0.9em; color: #555; font-weight: bold; margin-bottom: 10px; }
         
-        /* Estilos do Login */
         .login-box { text-align: center; padding: 40px 20px; }
         input { padding: 10px; font-size: 16px; border-radius: 4px; border: 1px solid #ccc; width: 60%; max-width: 300px; margin-bottom: 10px; }
         
-        /* Botões */
         button { padding: 10px 20px; font-size: 16px; border: none; border-radius: 4px; cursor: pointer; color: white; margin-top: 10px; transition: 0.3s; }
         .btn-entrar { background-color: #6b5b95; width: 60%; max-width: 300px; }
         .btn-entrar:hover { background-color: #5a4a7d; }
@@ -29,9 +26,8 @@
         .btn-orar:hover { background-color: #00695C; }
         .btn-ja-orou { background-color: #9E9E9E; width: 100%; cursor: not-allowed; }
         
-        /* Topo do painel */
         .cabecalho-painel { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
-        .boas-vindas { color: #6b5b95; font-weight: bold; }
+        .boas-vindas { color: #6b5b95; font-weight: bold; margin-top: 5px; display: block; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -58,27 +54,20 @@
     </div>
 
     <script>
-        // COLOQUE AS SUAS CHAVES AQUI
+        // 1. COLOQUE AS SUAS CHAVES AQUI
         const supabaseUrl = 'https://jnydylymxpkrqllqcyse.supabase.co'; 
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpueWR5bHlteHBrcnFsbHFjeXNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwOTgxMTgsImV4cCI6MjA4ODY3NDExOH0.fxUbdm7oItzJdW8ycpuLJtznVjwTzmLOz8ialZ96Yt0';
         const clienteSupabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-        // 2. TRADUTOR DE NOMES (Coloque os e-mails exatos que cadastrou no Supabase)
-        const nomesEquipe = {
-            "matheuspanber@gmail.com": "Matheus",
-            "vtg91508658@gmail.com": "Vinícius",
-            "lukassep50@gmail.com": "Lucas"
-        };
 
-        let emailUsuarioLogado = "";
+        let nomeUsuarioLogado = ""; // Agora vamos guardar o NOME e não o e-mail!
         let todosOsPedidos = [];
 
-        // 1. FUNÇÃO DE LOGIN OFICIAL
+        // FUNÇÃO DE LOGIN
         async function fazerLogin() {
             const emailDigitado = document.getElementById('emailInput').value;
             const senhaDigitada = document.getElementById('senhaInput').value;
             const msgErro = document.getElementById('msg-erro');
             
-            // Pede ao Supabase para validar o usuário
             const { data, error } = await clienteSupabase.auth.signInWithPassword({
                 email: emailDigitado,
                 password: senhaDigitada
@@ -88,14 +77,15 @@
                 msgErro.style.display = 'block';
                 console.error(error);
             } else {
-                // Login com sucesso!
                 msgErro.style.display = 'none';
-                emailUsuarioLogado = data.user.email;
                 
-                // Pega só a parte antes do @ para usar como nome
-                const nomeExibicao = emailUsuarioLogado.split('@')[0];
+                // Vai buscar o nome que nós salvamos no perfil usando o código SQL
+                const metadata = data.user.user_metadata;
                 
-                document.getElementById('texto-boas-vindas').innerText = "Olá, " + nomeExibicao + "!";
+                // Se por acaso esquecer de rodar o SQL, ele usa o começo do e-mail para não dar erro
+                nomeUsuarioLogado = metadata.nome || data.user.email.split('@')[0];
+                
+                document.getElementById('texto-boas-vindas').innerText = "Olá, " + nomeUsuarioLogado + "!";
                 document.getElementById('tela-login').style.display = 'none';
                 document.getElementById('tela-painel').style.display = 'block';
                 
@@ -103,7 +93,7 @@
             }
         }
 
-        // 2. FUNÇÃO PARA CARREGAR OS PEDIDOS
+        // FUNÇÃO PARA CARREGAR OS PEDIDOS
         async function carregarPedidos() {
             const { data, error } = await clienteSupabase
                 .from('pedidos_oracao')
@@ -114,8 +104,7 @@
             divLista.innerHTML = ''; 
 
             if (error) {
-                divLista.innerHTML = '<p>Erro ao carregar os pedidos. Verifique suas permissões.</p>';
-                console.error(error);
+                divLista.innerHTML = '<p>Erro ao carregar os pedidos.</p>';
                 return;
             }
 
@@ -130,11 +119,12 @@
                 const dataFormatada = new Date(item.created_at).toLocaleDateString('pt-BR');
                 const nomeExibicao = item.nome ? item.nome : 'Anônimo';
                 
+                // Agora a lista já tem os Nomes salvos direto!
                 let listaQuemOrou = item.quem_orou || [];
-                // Mostra a primeira parte do e-mail de quem orou
-                let nomesQuemOrou = listaQuemOrou.length > 0 ? listaQuemOrou.map(e => e.split('@')[0]).join(", ") : "Ninguém ainda";
+                let nomesQuemOrou = listaQuemOrou.length > 0 ? listaQuemOrou.join(", ") : "Ninguém ainda";
                 
-                let euJaOrei = listaQuemOrou.includes(emailUsuarioLogado);
+                // Verifica se o meu NOME está na lista
+                let euJaOrei = listaQuemOrou.includes(nomeUsuarioLogado);
                 
                 let botaoHTML = "";
                 if (euJaOrei) {
@@ -155,13 +145,15 @@
             });
         }
 
-        // 3. FUNÇÃO DE REGISTRAR ORAÇÃO
+        // FUNÇÃO DE REGISTRAR ORAÇÃO
         async function marcarComoOrou(idDoPedido) {
             const pedidoAtual = todosOsPedidos.find(p => p.id === idDoPedido);
             if (!pedidoAtual) return;
 
             let novaLista = pedidoAtual.quem_orou || [];
-            novaLista.push(emailUsuarioLogado);
+            
+            // Adiciona o NOME do usuário logado na lista
+            novaLista.push(nomeUsuarioLogado); 
 
             const { error } = await clienteSupabase
                 .from('pedidos_oracao')
@@ -169,14 +161,14 @@
                 .eq('id', idDoPedido);
 
             if (error) {
-                alert("Erro ao registrar oração. Você tem permissão?");
+                alert("Erro ao registrar oração.");
                 console.error(error);
             } else {
                 carregarPedidos();
             }
         }
 
-        // 4. FUNÇÃO DE SAIR (LOGOUT)
+        // FUNÇÃO DE SAIR
         async function fazerLogout() {
             await clienteSupabase.auth.signOut();
             document.getElementById('tela-painel').style.display = 'none';
