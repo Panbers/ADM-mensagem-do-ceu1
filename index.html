@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -22,52 +23,52 @@
     </div>
 
     <script>
-        // 1. Configurando a conexão (COLOQUE AS SUAS CHAVES AQUI)
-        const supabaseUrl = 'https://jnydylymxpkrqllqcyse.supabase.co'; // Ex: https://jnydylymxpkrqllqcyse.supabase.co
+        // 1. COLOQUE AS SUAS CHAVES AQUI DENTRO DAS ASPAS
+        const supabaseUrl = 'https://jnydylymxpkrqllqcyse.supabase.co'; 
         const supabaseKey = 'sb_publishable_ffc-WVhDUydO020hJvZ-GQ_GoP4-3OteyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpueWR5bHlteHBrcnFsbHFjeXNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwOTgxMTgsImV4cCI6MjA4ODY3NDExOH0.fxUbdm7oItzJdW8ycpuLJtznVjwTzmLOz8ialZ96Yt0';
-        // CORREÇÃO: Usamos 'meuSupabase' e chamamos o 'window.supabase'
-        const meuSupabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        // 2. Criando a conexão com o banco
+        const clienteSupabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        // 2. Função para buscar os pedidos no banco de dados
         async function carregarPedidos() {
-            const { data, error } = await supabase
+            // 3. ATENÇÃO AQUI: Usando o clienteSupabase para buscar os dados
+            const { data, error } = await clienteSupabase
                 .from('pedidos_oracao')
                 .select('*')
-                .order('created_at', { ascending: false }); // Traz os mais recentes primeiro
+                .order('created_at', { ascending: false }); 
 
             const divLista = document.getElementById('lista-pedidos');
-            divLista.innerHTML = ''; // Limpa o "Carregando..."
+            divLista.innerHTML = ''; 
 
             if (error) {
                 divLista.innerHTML = '<p>Erro ao carregar os pedidos.</p>';
-                console.error(error);
+                console.error("Erro do Supabase:", error);
                 return;
             }
 
-            if (data.length === 0) {
+            if (!data || data.length === 0) {
                 divLista.innerHTML = '<p>Nenhum pedido de oração no momento.</p>';
                 return;
             }
 
-            // 3. Montando a tela com os dados
+            // 4. Mostrando os pedidos na tela
             data.forEach(item => {
                 const dataFormatada = new Date(item.created_at).toLocaleDateString('pt-BR');
                 const nomeExibicao = item.nome ? item.nome : 'Anônimo';
+                const quantidadeOrou = item.quem_orou ? item.quem_orou.length : 0; 
 
                 divLista.innerHTML += `
                     <div class="pedido-card">
                         <span class="data">${dataFormatada}</span>
                         <p class="nome">${nomeExibicao}</p>
                         <p>${item.pedido}</p>
-                        <small>Quem já orou: ${item.quem_orou.length} pessoa(s)</small>
+                        <small>Quem já orou: ${quantidadeOrou} pessoa(s)</small>
                     </div>
                 `;
             });
         }
 
-        // Executa a função assim que a página abre
         carregarPedidos();
     </script>
-
 </body>
 </html>
