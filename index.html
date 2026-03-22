@@ -25,7 +25,8 @@
         // 1. Configurando a conexão (COLOQUE AS SUAS CHAVES AQUI)
         const supabaseUrl = 'https://jnydylymxpkrqllqcyse.supabase.co'; // Ex: https://jnydylymxpkrqllqcyse.supabase.co
         const supabaseKey = 'sb_publishable_ffc-WVhDUydO020hJvZ-GQ_GoP4-3OteyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpueWR5bHlteHBrcnFsbHFjeXNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwOTgxMTgsImV4cCI6MjA4ODY3NDExOH0.fxUbdm7oItzJdW8ycpuLJtznVjwTzmLOz8ialZ96Yt0';
-        const supabase = supabaseCreateClient.createClient(supabaseUrl, supabaseKey);
+        // CORREÇÃO: Usamos 'meuSupabase' e chamamos o 'window.supabase'
+        const meuSupabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         // 2. Função para buscar os pedidos no banco de dados
         async function carregarPedidos() {
