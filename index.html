@@ -1,37 +1,104 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel - Mensagem do Céu</title>
+    <title>Painel Admin - Mensagem do Céu</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px; }
         .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         h1 { color: #333; text-align: center; }
-        .pedido-card { border-left: 5px solid #6b5b95; background: #fafafa; padding: 15px; margin-bottom: 15px; border-radius: 4px; }
-        .nome { font-weight: bold; color: #6b5b95; }
-        .data { font-size: 0.8em; color: #888; float: right; }
+        
+        /* Estilos do Painel */
+        .pedido-card { border-left: 5px solid #6b5b95; background: #fafafa; padding: 15px; margin-bottom: 15px; border-radius: 4px; position: relative; }
+        .nome { font-weight: bold; color: #6b5b95; font-size: 1.1em; margin-bottom: 5px; }
+        .data { font-size: 0.8em; color: #888; position: absolute; top: 15px; right: 15px; }
+        .texto-pedido { font-size: 1.1em; margin: 15px 0; }
+        .quem-orou-texto { font-size: 0.9em; color: #555; font-weight: bold; margin-bottom: 10px; }
+        
+        /* Estilos do Login */
+        .login-box { text-align: center; padding: 40px 20px; }
+        input { padding: 10px; font-size: 16px; border-radius: 4px; border: 1px solid #ccc; width: 60%; max-width: 300px; margin-bottom: 10px; }
+        
+        /* Botões */
+        button { padding: 10px 20px; font-size: 16px; border: none; border-radius: 4px; cursor: pointer; color: white; margin-top: 10px; transition: 0.3s; }
+        .btn-entrar { background-color: #6b5b95; width: 60%; max-width: 300px; }
+        .btn-entrar:hover { background-color: #5a4a7d; }
+        .btn-sair { background-color: #d9534f; font-size: 14px; padding: 8px 15px; }
+        .btn-orar { background-color: #00897B; width: 100%; font-weight: bold; }
+        .btn-orar:hover { background-color: #00695C; }
+        .btn-ja-orou { background-color: #9E9E9E; width: 100%; cursor: not-allowed; }
+        
+        /* Topo do painel */
+        .cabecalho-painel { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .boas-vindas { color: #6b5b95; font-weight: bold; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-    <div class="container">
-        <h1>🙏 Pedidos de Oração</h1>
+    <div id="tela-login" class="container login-box">
+        <h1>🔒 Acesso da Equipe</h1>
+        <p>Faça login com sua conta do Supabase.</p>
+        <input type="email" id="emailInput" placeholder="Seu E-mail"><br>
+        <input type="password" id="senhaInput" placeholder="Sua Senha"><br>
+        <button class="btn-entrar" onclick="fazerLogin()">Entrar</button>
+        <p id="msg-erro" style="color: red; display: none;">Login ou senha incorretos.</p>
+    </div>
+
+    <div id="tela-painel" class="container" style="display: none;">
+        <div class="cabecalho-painel">
+            <div>
+                <h1 style="margin: 0;">🙏 Pedidos de Oração</h1>
+                <span class="boas-vindas" id="texto-boas-vindas">Bem-vindo(a)!</span>
+            </div>
+            <button class="btn-sair" onclick="fazerLogout()">Sair</button>
+        </div>
         <div id="lista-pedidos">Carregando pedidos do céu...</div>
     </div>
 
     <script>
-        // 1. COLOQUE AS SUAS CHAVES AQUI DENTRO DAS ASPAS
+        // COLOQUE AS SUAS CHAVES AQUI
         const supabaseUrl = 'https://jnydylymxpkrqllqcyse.supabase.co'; 
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpueWR5bHlteHBrcnFsbHFjeXNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwOTgxMTgsImV4cCI6MjA4ODY3NDExOH0.fxUbdm7oItzJdW8ycpuLJtznVjwTzmLOz8ialZ96Yt0';
-        
-        // 2. Criando a conexão com o banco
         const clienteSupabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
+        let emailUsuarioLogado = "";
+        let todosOsPedidos = [];
+
+        // 1. FUNÇÃO DE LOGIN OFICIAL
+        async function fazerLogin() {
+            const emailDigitado = document.getElementById('emailInput').value;
+            const senhaDigitada = document.getElementById('senhaInput').value;
+            const msgErro = document.getElementById('msg-erro');
+            
+            // Pede ao Supabase para validar o usuário
+            const { data, error } = await clienteSupabase.auth.signInWithPassword({
+                email: emailDigitado,
+                password: senhaDigitada
+            });
+
+            if (error) {
+                msgErro.style.display = 'block';
+                console.error(error);
+            } else {
+                // Login com sucesso!
+                msgErro.style.display = 'none';
+                emailUsuarioLogado = data.user.email;
+                
+                // Pega só a parte antes do @ para usar como nome
+                const nomeExibicao = emailUsuarioLogado.split('@')[0];
+                
+                document.getElementById('texto-boas-vindas').innerText = "Olá, " + nomeExibicao + "!";
+                document.getElementById('tela-login').style.display = 'none';
+                document.getElementById('tela-painel').style.display = 'block';
+                
+                carregarPedidos();
+            }
+        }
+
+        // 2. FUNÇÃO PARA CARREGAR OS PEDIDOS
         async function carregarPedidos() {
-            // 3. ATENÇÃO AQUI: Usando o clienteSupabase para buscar os dados
             const { data, error } = await clienteSupabase
                 .from('pedidos_oracao')
                 .select('*')
@@ -41,8 +108,8 @@
             divLista.innerHTML = ''; 
 
             if (error) {
-                divLista.innerHTML = '<p>Erro ao carregar os pedidos.</p>';
-                console.error("Erro do Supabase:", error);
+                divLista.innerHTML = '<p>Erro ao carregar os pedidos. Verifique suas permissões.</p>';
+                console.error(error);
                 return;
             }
 
@@ -51,24 +118,66 @@
                 return;
             }
 
-            // 4. Mostrando os pedidos na tela
+            todosOsPedidos = data; 
+
             data.forEach(item => {
                 const dataFormatada = new Date(item.created_at).toLocaleDateString('pt-BR');
                 const nomeExibicao = item.nome ? item.nome : 'Anônimo';
-                const quantidadeOrou = item.quem_orou ? item.quem_orou.length : 0; 
+                
+                let listaQuemOrou = item.quem_orou || [];
+                // Mostra a primeira parte do e-mail de quem orou
+                let nomesQuemOrou = listaQuemOrou.length > 0 ? listaQuemOrou.map(e => e.split('@')[0]).join(", ") : "Ninguém ainda";
+                
+                let euJaOrei = listaQuemOrou.includes(emailUsuarioLogado);
+                
+                let botaoHTML = "";
+                if (euJaOrei) {
+                    botaoHTML = `<button class="btn-ja-orou" disabled>✅ Você já orou por este pedido</button>`;
+                } else {
+                    botaoHTML = `<button class="btn-orar" onclick="marcarComoOrou(${item.id})">🙏 Marcar que já orei</button>`;
+                }
 
                 divLista.innerHTML += `
                     <div class="pedido-card">
                         <span class="data">${dataFormatada}</span>
-                        <p class="nome">${nomeExibicao}</p>
-                        <p>${item.pedido}</p>
-                        <small>Quem já orou: ${quantidadeOrou} pessoa(s)</small>
+                        <div class="nome">${nomeExibicao}</div>
+                        <div class="texto-pedido">"${item.pedido}"</div>
+                        <div class="quem-orou-texto">Equipe que orou: <span style="font-weight: normal;">${nomesQuemOrou}</span></div>
+                        ${botaoHTML}
                     </div>
                 `;
             });
         }
 
-        carregarPedidos();
+        // 3. FUNÇÃO DE REGISTRAR ORAÇÃO
+        async function marcarComoOrou(idDoPedido) {
+            const pedidoAtual = todosOsPedidos.find(p => p.id === idDoPedido);
+            if (!pedidoAtual) return;
+
+            let novaLista = pedidoAtual.quem_orou || [];
+            novaLista.push(emailUsuarioLogado);
+
+            const { error } = await clienteSupabase
+                .from('pedidos_oracao')
+                .update({ quem_orou: novaLista })
+                .eq('id', idDoPedido);
+
+            if (error) {
+                alert("Erro ao registrar oração. Você tem permissão?");
+                console.error(error);
+            } else {
+                carregarPedidos();
+            }
+        }
+
+        // 4. FUNÇÃO DE SAIR (LOGOUT)
+        async function fazerLogout() {
+            await clienteSupabase.auth.signOut();
+            document.getElementById('tela-painel').style.display = 'none';
+            document.getElementById('tela-login').style.display = 'block';
+            document.getElementById('emailInput').value = '';
+            document.getElementById('senhaInput').value = '';
+        }
     </script>
 </body>
 </html>
